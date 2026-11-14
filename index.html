@@ -1,0 +1,453 @@
+<title>Bookmark Shelf</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sidebar kategori di kiri, daftar bookmark dikelompokkan per kategori di kanan; di HP sidebar jadi chip yang bisa digeser */
+:root {
+  --bg: #f2f4f7;
+  --surface: #ffffff;
+  --fg: #161b26;
+  --muted: #5d6678;
+  --line: #dde2ea;
+  --accent: #3558e6;
+  --accent-fg: #ffffff;
+  --accent-soft: #e6ebfd;
+  --danger: #c4361f;
+  --tile-l: 42%;
+  --shadow: 0 1px 2px rgba(22, 27, 38, .06);
+  --font-display: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif;
+  --font-body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f131a; --surface: #171c26; --fg: #e8ebf2; --muted: #98a1b3; --line: #263040;
+    --accent: #8ba3ff; --accent-fg: #0f131a; --accent-soft: #212b4a; --danger: #ff8a75;
+    --tile-l: 38%; --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f131a; --surface: #171c26; --fg: #e8ebf2; --muted: #98a1b3; --line: #263040;
+  --accent: #8ba3ff; --accent-fg: #0f131a; --accent-soft: #212b4a; --danger: #ff8a75;
+  --tile-l: 38%; --shadow: none; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  padding-block: 20px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.app { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 224px minmax(0, 1fr); gap: 28px; align-items: start; }
+
+/* sidebar */
+.side { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 24px; letter-spacing: -.02em; line-height: 1.1; }
+.brand small { display: block; font-family: var(--font-mono); font-weight: 400; font-size: 11px; letter-spacing: .04em; color: var(--muted); margin-top: 6px; text-transform: uppercase; }
+.cats { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.cat {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left;
+  background: none; border: 0; border-radius: 8px; padding: 7px 10px; color: var(--muted);
+}
+.cat span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.cat .n { font-family: var(--font-mono); font-size: 12px; }
+.cat:hover { background: var(--surface); color: var(--fg); }
+.cat[aria-current="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.sep { height: 1px; background: var(--line); margin: 6px 10px; list-style: none; }
+.side-foot { display: flex; flex-direction: column; gap: 8px; }
+.status { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+/* main */
+.main { min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.search { flex: 1 1 240px; min-width: 0; position: relative; }
+.search svg { position: absolute; left: 12px; top: 50%; translate: 0 -50%; color: var(--muted); pointer-events: none; }
+.search input { width: 100%; padding: 10px 12px 10px 38px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.search input::placeholder { color: var(--muted); }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 500; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: none; }
+.btn.danger { color: var(--danger); }
+select.btn { appearance: none; padding-right: 14px; }
+.viewsw { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.viewsw button { background: none; border: 0; padding: 9px 11px; color: var(--muted); display: grid; place-items: center; }
+.viewsw button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+
+.group { display: flex; flex-direction: column; gap: 10px; }
+.ghead { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 0; text-align: left; width: 100%; }
+.ghead .chev { transition: rotate .15s; color: var(--muted); flex: none; }
+.ghead[aria-expanded="false"] .chev { rotate: -90deg; }
+.ghead h2 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ghead .n { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.ghead::after { content: ""; flex: 1; height: 1px; background: var(--line); margin-left: 6px; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.list.rows { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); min-width: 0; }
+.card:hover, .card:focus-within { border-color: var(--accent); }
+.link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; padding-right: 96px; text-decoration: none; color: inherit; min-width: 0; border-radius: 10px; }
+.tile { flex: none; width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 16px; color: #fff; background: hsl(var(--h) 52% var(--tile-l)); text-transform: uppercase; }
+.meta { display: flex; flex-direction: column; min-width: 0; }
+.t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rows .link { padding-block: 7px; }
+.rows .tile { width: 28px; height: 28px; font-size: 14px; }
+.rows .meta { flex-direction: row; align-items: baseline; gap: 12px; }
+.rows .d { flex: 1; }
+.acts { position: absolute; right: 6px; top: 50%; translate: 0 -50%; display: flex; gap: 2px; opacity: 0; }
+.card:hover .acts, .card:focus-within .acts { opacity: 1; }
+@media (hover: none) { .acts { opacity: 1; } }
+.acts button { background: none; border: 0; border-radius: 6px; padding: 6px; color: var(--muted); display: grid; place-items: center; min-height: 30px; }
+.acts button:hover { background: var(--accent-soft); color: var(--accent); }
+.acts button.on { color: var(--accent); }
+.acts button.confirm { color: var(--danger); font-size: 12px; font-weight: 600; padding-inline: 8px; background: none; }
+.acts:has(.confirm) { opacity: 1; }
+.star { position: absolute; right: 8px; top: 50%; translate: 0 -50%; color: var(--accent); pointer-events: none; }
+.card:hover .star, .card:focus-within .star { display: none; }
+@media (hover: none) { .star { display: none; } }
+
+.empty { border: 1px dashed var(--line); border-radius: 14px; padding: 36px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; background: var(--surface); }
+.empty h2 { margin: 0; font-family: var(--font-display); font-size: 21px; letter-spacing: -.01em; }
+.empty p { margin: 0; color: var(--muted); max-width: 46ch; }
+.empty .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+/* modal */
+.scrim { position: fixed; inset: 0; background: rgba(8, 11, 18, .55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.modal { width: min(460px, 100%); max-height: 100%; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.modal h2 { margin: 0; font-family: var(--font-display); font-size: 20px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .03em; text-transform: uppercase; }
+.field input[type="text"], .field input[type="url"] { padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; width: 100%; }
+.check { display: flex; align-items: center; gap: 8px; }
+.err { color: var(--danger); font-size: 13px; min-height: 1.2em; margin: 0; }
+.mfoot { display: flex; gap: 8px; justify-content: flex-end; }
+.toast { position: fixed; left: 50%; translate: -50% 0; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 30; max-width: calc(100% - 32px); }
+.loading { color: var(--muted); font-family: var(--font-mono); font-size: 13px; padding: 24px 0; }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .side { position: static; gap: 12px; }
+  .cats { flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px; }
+  .cat { width: auto; flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; }
+  .cat span:first-child { max-width: 160px; }
+  .sep { display: none; }
+  .side-foot { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .rows .meta { flex-direction: column; gap: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .ghead .chev { transition: none; } }
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">Bookmark Shelf<small id="total">0 links</small></div>
+    <ul class="cats" id="cats"></ul>
+    <div class="side-foot">
+      <button class="btn ghost" id="importBtn" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/></svg>
+        Import from Chrome
+      </button>
+      <input type="file" id="importFile" accept=".html,.htm,text/html" hidden>
+      <span class="status" id="status"></span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="bar">
+      <label class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Search by app, title, or address" autocomplete="off" aria-label="Search bookmarks">
+      </label>
+      <select class="btn" id="sort" aria-label="Sort">
+        <option value="new">Newest</option>
+        <option value="az">A to Z</option>
+      </select>
+      <div class="viewsw" role="group" aria-label="View">
+        <button type="button" id="vGrid" aria-pressed="true" aria-label="Cards"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg></button>
+        <button type="button" id="vRows" aria-pressed="false" aria-label="List"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
+      <button class="btn primary" id="addBtn" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Add
+      </button>
+    </div>
+    <div id="content"><div class="loading">Loading bookmarks…</div></div>
+  </main>
+</div>
+<div id="layer"></div>
+
+<script>
+(function () {
+  "use strict";
+  var ICON = {
+    star: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.8 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8z"/></svg>',
+    starO: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.8 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8z"/></svg>',
+    edit: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
+    del: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg>',
+    chev: '<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
+  };
+  var NOCAT = "No app";
+  var SAMPLE = [
+    ["Home page", "https://www.wikipedia.org", "Wikipedia"],
+    ["Web documentation", "https://developer.mozilla.org", "MDN"],
+    ["My repositories", "https://github.com", "GitHub"],
+    ["Find places", "https://maps.google.com", "Google Maps"],
+    ["Top stories", "https://news.ycombinator.com", "Hacker News"],
+    ["Latest news", "https://www.kompas.com", "Kompas"]
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { items: [], mode: "loading", q: "", cat: "all", sort: "new", view: "grid", collapsed: {}, confirmId: null };
+  var store = null, confirmTimer = null;
+
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  state.view = lsGet("rak:view", "grid");
+  state.sort = lsGet("rak:sort", "new");
+  state.collapsed = lsGet("rak:collapsed", {});
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function newId() { return "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function host(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; } }
+  function hue(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; }
+  function normUrl(raw) {
+    var v = String(raw || "").trim();
+    if (!v) return null;
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) v = "https://" + v;
+    try { var u = new URL(v); if (u.protocol !== "http:" && u.protocol !== "https:") return null; if (u.hostname.indexOf(".") < 0 && u.hostname !== "localhost") return null; return u.href; } catch (e) { return null; }
+  }
+  function toast(msg) {
+    var old = document.querySelector(".toast"); if (old) old.remove();
+    var el = document.createElement("div"); el.className = "toast"; el.setAttribute("role", "status"); el.textContent = msg;
+    document.body.appendChild(el); setTimeout(function () { el.remove(); }, 3200);
+  }
+
+  /* ---------- storage: local SQLite through server.py ---------- */
+  function api(method, path, body) {
+    return fetch(path, { method: method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.status === 204 ? null : r.json(); });
+  }
+  function apiStore() {
+    return {
+      put: function (it) {
+        return api("PUT", "/api/bookmarks/" + encodeURIComponent(it.id), it).then(function () {
+          var i = state.items.findIndex(function (x) { return x.id === it.id; });
+          if (i < 0) state.items.push(it); else state.items[i] = it;
+          render();
+        });
+      },
+      putMany: function (arr, prog) {
+        return api("POST", "/api/bookmarks/bulk", arr).then(function () {
+          arr.forEach(function (it) { state.items.push(it); });
+          render(); if (prog) prog(arr.length);
+        });
+      },
+      del: function (id) {
+        return api("DELETE", "/api/bookmarks/" + encodeURIComponent(id)).then(function () {
+          state.items = state.items.filter(function (x) { return x.id !== id; });
+          render();
+        });
+      }
+    };
+  }
+  function init() {
+    render();
+    store = apiStore();
+    api("GET", "/api/bookmarks").then(function (rows) {
+      state.items = rows; state.mode = "local"; render();
+    }, function () { state.mode = "offline"; render(); });
+  }
+
+  /* ---------- tampilan ---------- */
+  function catOf(it) { return (it.cat || "").trim() || NOCAT; }
+  function sortItems(arr) {
+    var s = state.sort;
+    return arr.slice().sort(function (a, b) {
+      if (!!b.fav !== !!a.fav) return b.fav ? 1 : -1;
+      if (s === "az") return (a.title || "").localeCompare(b.title || "", "en", { sensitivity: "base" });
+      return (b.at || 0) - (a.at || 0);
+    });
+  }
+  function cardHtml(it) {
+    var title = it.title || host(it.url), d = host(it.url), confirming = state.confirmId === it.id;
+    return '<li class="card" data-id="' + esc(it.id) + '">' +
+      '<a class="link" href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer" title="' + esc(title) + '">' +
+      '<span class="tile" style="--h:' + hue(d) + '" aria-hidden="true">' + esc((title.trim()[0] || "?")) + '</span>' +
+      '<span class="meta"><span class="t">' + esc(title) + '</span><span class="d">' + esc(d) + '</span></span></a>' +
+      (it.fav && !confirming ? '<span class="star" aria-label="Favorite">' + ICON.star + '</span>' : '') +
+      '<div class="acts">' +
+      (confirming ? '<button type="button" class="confirm" data-act="del">Delete?</button>' :
+        '<button type="button" data-act="fav" class="' + (it.fav ? "on" : "") + '" aria-label="' + (it.fav ? "Remove from favorites" : "Add to favorites") + '">' + (it.fav ? ICON.star : ICON.starO) + '</button>' +
+        '<button type="button" data-act="edit" aria-label="Edit">' + ICON.edit + '</button>' +
+        '<button type="button" data-act="del" aria-label="Delete">' + ICON.del + '</button>') +
+      '</div></li>';
+  }
+  function render() {
+    var items = state.items, q = state.q.trim().toLowerCase();
+    $("total").textContent = items.length + (items.length === 1 ? " link" : " links");
+    $("status").textContent = state.mode === "local" ? "Saved on this computer" : "";
+    $("vGrid").setAttribute("aria-pressed", state.view === "grid");
+    $("vRows").setAttribute("aria-pressed", state.view === "rows");
+    $("sort").value = state.sort;
+
+    // sidebar
+    var counts = {}, favN = 0;
+    items.forEach(function (it) { var c = catOf(it); counts[c] = (counts[c] || 0) + 1; if (it.fav) favN++; });
+    var names = Object.keys(counts).sort(function (a, b) { if (a === NOCAT) return 1; if (b === NOCAT) return -1; return a.localeCompare(b, "en", { sensitivity: "base" }); });
+    if (state.cat !== "all" && state.cat !== "fav" && !counts[state.cat]) state.cat = "all";
+    function catBtn(key, label, n) { return '<li><button type="button" class="cat" data-cat="' + esc(key) + '" aria-current="' + (state.cat === key) + '"><span>' + esc(label) + '</span><span class="n">' + n + '</span></button></li>'; }
+    var html = catBtn("all", "All", items.length) + catBtn("fav", "Favorites", favN);
+    if (names.length) html += '<li class="sep" role="separator"></li>';
+    names.forEach(function (n) { html += catBtn("c:" + n, n, counts[n]); });
+    $("cats").innerHTML = html.replace(/aria-current="(true|false)"/g, function (m, v) { return v === "true" ? 'aria-current="true"' : ""; });
+    // fix active state for category keys with the c: prefix
+    var curKey = state.cat === "all" || state.cat === "fav" ? state.cat : "c:" + state.cat;
+    Array.prototype.forEach.call($("cats").querySelectorAll(".cat"), function (b) { if (b.dataset.cat === curKey) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current"); });
+
+    // konten
+    var c = $("content");
+    if (state.mode === "loading") { c.innerHTML = '<div class="loading">Loading bookmarks…</div>'; return; }
+    if (state.mode === "offline") { c.innerHTML = '<div class="empty"><h2>Cannot reach the local server</h2><p>Make sure <code>server.py</code> is still running in your terminal, then reload this page.</p></div>'; return; }
+    if (!items.length) {
+      c.innerHTML = '<div class="empty"><h2>Your shelf is empty</h2><p>Add links one by one, or import all your bookmarks from Chrome at once. Everything is grouped by app name.</p>' +
+        '<div class="row"><button class="btn primary" type="button" data-do="add">Add bookmark</button><button class="btn" type="button" data-do="import">Import from Chrome</button><button class="btn ghost" type="button" data-do="sample">Load examples</button></div></div>';
+      return;
+    }
+    var pool = items.filter(function (it) {
+      if (state.cat === "fav" && !it.fav) return false;
+      if (state.cat !== "all" && state.cat !== "fav" && catOf(it) !== state.cat) return false;
+      if (q && (it.title || "").toLowerCase().indexOf(q) < 0 && it.url.toLowerCase().indexOf(q) < 0 && catOf(it).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+    if (!pool.length) { c.innerHTML = '<div class="empty"><h2>No results</h2><p>Try another keyword or pick a different app.</p></div>'; return; }
+    var cls = "list" + (state.view === "rows" ? " rows" : "");
+    if (state.cat === "all" || state.cat === "fav") {
+      var groups = {};
+      pool.forEach(function (it) { (groups[catOf(it)] = groups[catOf(it)] || []).push(it); });
+      var gn = Object.keys(groups).sort(function (a, b) { if (a === NOCAT) return 1; if (b === NOCAT) return -1; return a.localeCompare(b, "en", { sensitivity: "base" }); });
+      c.innerHTML = '<div style="display:flex;flex-direction:column;gap:22px">' + gn.map(function (g) {
+        var open = !state.collapsed[g] || q;
+        return '<section class="group"><button type="button" class="ghead" data-toggle="' + esc(g) + '" aria-expanded="' + !!open + '">' + ICON.chev + '<h2>' + esc(g) + '</h2><span class="n">' + groups[g].length + '</span></button>' +
+          (open ? '<ul class="' + cls + '">' + sortItems(groups[g]).map(cardHtml).join("") + '</ul>' : "") + '</section>';
+      }).join("") + '</div>';
+    } else {
+      c.innerHTML = '<ul class="' + cls + '">' + sortItems(pool).map(cardHtml).join("") + '</ul>';
+    }
+  }
+
+  /* ---------- dialog tambah / ubah ---------- */
+  function openForm(it) {
+    var cats = {}; state.items.forEach(function (x) { cats[catOf(x)] = 1; });
+    var opts = Object.keys(cats).filter(function (n) { return n !== NOCAT; }).map(function (n) { return '<option value="' + esc(n) + '">'; }).join("");
+    var layer = $("layer");
+    layer.innerHTML = '<div class="scrim" id="scrim"><form class="modal" id="form" role="dialog" aria-modal="true" aria-labelledby="mt" novalidate>' +
+      '<h2 id="mt">' + (it ? "Edit bookmark" : "Add bookmark") + '</h2>' +
+      '<div class="field"><label for="fCat">App name</label><input id="fCat" type="text" list="catList" placeholder="For example Notion, GitHub, Figma" autocomplete="off" value="' + esc(it ? it.cat || "" : state.cat !== "all" && state.cat !== "fav" && state.cat !== NOCAT ? state.cat : "") + '"><datalist id="catList">' + opts + '</datalist></div>' +
+      '<div class="field"><label for="fUrl">Address</label><input id="fUrl" type="text" inputmode="url" placeholder="example.com/page" autocomplete="off" value="' + esc(it ? it.url : "") + '"></div>' +
+      '<div class="field"><label for="fTitle">Title (optional)</label><input id="fTitle" type="text" placeholder="Page name or what it is for" autocomplete="off" value="' + esc(it ? it.title || "" : "") + '"></div>' +
+      '<label class="check"><input id="fFav" type="checkbox"' + (it && it.fav ? " checked" : "") + '> Mark as favorite</label>' +
+      '<p class="err" id="fErr" role="alert"></p>' +
+      '<div class="mfoot"><button type="button" class="btn ghost" id="fCancel">Cancel</button><button type="submit" class="btn primary">Save</button></div></form></div>';
+    var url = $("fUrl"), appIn = $("fCat"), touched = !!appIn.value;
+    appIn.addEventListener("input", function () { touched = true; });
+    if (!it) url.addEventListener("input", function () {
+      if (touched) return;
+      var u = normUrl(url.value); if (!u) return;
+      var n = host(u).split("."); n = n.length > 2 && n[n.length - 2].length <= 3 ? n[n.length - 3] : n[n.length - 2] || n[0];
+      appIn.value = n ? n.charAt(0).toUpperCase() + n.slice(1) : "";
+    });
+    (appIn.value ? url : appIn).focus(); if (it) url.select();
+    function close() { layer.innerHTML = ""; document.removeEventListener("keydown", onKey); }
+    function onKey(e) { if (e.key === "Escape") close(); }
+    document.addEventListener("keydown", onKey);
+    $("fCancel").onclick = close;
+    $("scrim").addEventListener("mousedown", function (e) { if (e.target.id === "scrim") close(); });
+    $("form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var u = normUrl(url.value);
+      if (!u) { $("fErr").textContent = "That address does not look right. Use a format like example.com or https://example.com."; url.focus(); return; }
+      var dup = state.items.find(function (x) { return x.url === u && (!it || x.id !== it.id); });
+      if (dup) { $("fErr").textContent = "This address is already on your shelf: " + (dup.title || host(dup.url)) + "."; return; }
+      var rec = { id: it ? it.id : newId(), url: u, title: $("fTitle").value.trim(), cat: $("fCat").value.trim(), fav: $("fFav").checked, at: it ? it.at : Date.now() };
+      close();
+      store.put(rec).then(function () { toast(it ? "Changes saved" : "Bookmark added"); }, function () { toast("Could not save. Please try again."); });
+    });
+  }
+
+  /* ---------- impor dari Chrome ---------- */
+  function folderOf(a) {
+    var dl = a.closest("dl");
+    while (dl) {
+      var h = null, p = dl.previousElementSibling;
+      if (p && p.tagName === "H3") h = p;
+      else if (dl.parentElement && dl.parentElement.tagName === "DT") h = dl.parentElement.querySelector(":scope > h3");
+      if (h) return h.textContent.trim();
+      dl = dl.parentElement && dl.parentElement.closest("dl");
+    }
+    return "";
+  }
+  function importHtml(text) {
+    var doc = new DOMParser().parseFromString(text, "text/html"), seen = {}, out = [];
+    state.items.forEach(function (x) { seen[x.url] = 1; });
+    var now = Date.now(), skipped = 0;
+    Array.prototype.forEach.call(doc.querySelectorAll("a[href]"), function (a, i) {
+      var u = normUrl(a.getAttribute("href"));
+      if (!u || /^https?:\/\/(localhost|127\.)/.test(u)) { skipped++; return; }
+      if (seen[u]) { skipped++; return; }
+      seen[u] = 1;
+      var add = parseInt(a.getAttribute("add_date"), 10);
+      out.push({ id: newId() + i, url: u, title: (a.textContent || "").trim().slice(0, 200), cat: folderOf(a).slice(0, 60), fav: false, at: add ? add * 1000 : now - i });
+    });
+    if (!out.length) { toast("No new bookmarks in that file."); return; }
+    toast("Importing " + out.length + " bookmarks…");
+    store.putMany(out, function (n) { if (n === out.length) toast(out.length + " bookmarks imported" + (skipped ? ", " + skipped + " skipped" : "") + "."); })
+      .catch(function () { toast("Some bookmarks failed to import. Try again; duplicates are skipped."); });
+  }
+
+  /* ---------- event ---------- */
+  $("q").addEventListener("input", function (e) { state.q = e.target.value; render(); });
+  $("sort").addEventListener("change", function (e) { state.sort = e.target.value; lsSet("rak:sort", state.sort); render(); });
+  $("vGrid").onclick = function () { state.view = "grid"; lsSet("rak:view", "grid"); render(); };
+  $("vRows").onclick = function () { state.view = "rows"; lsSet("rak:view", "rows"); render(); };
+  $("addBtn").onclick = function () { if (store) openForm(null); };
+  $("importBtn").onclick = function () { $("importFile").click(); };
+  $("importFile").addEventListener("change", function (e) {
+    var f = e.target.files[0]; e.target.value = "";
+    if (!f || !store) return;
+    var r = new FileReader(); r.onload = function () { importHtml(String(r.result)); }; r.onerror = function () { toast("Could not read that file."); };
+    r.readAsText(f);
+  });
+  $("cats").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-cat]"); if (!b) return;
+    var k = b.dataset.cat; state.cat = k === "all" || k === "fav" ? k : k.slice(2); render();
+  });
+  $("content").addEventListener("click", function (e) {
+    var d = e.target.closest("[data-do]");
+    if (d && store) {
+      if (d.dataset.do === "add") openForm(null);
+      else if (d.dataset.do === "import") $("importFile").click();
+      else if (d.dataset.do === "sample") {
+        var now = Date.now();
+        store.putMany(SAMPLE.map(function (s, i) { return { id: newId() + i, title: s[0], url: s[1], cat: s[2], fav: i === 0, at: now - i }; }));
+      }
+      return;
+    }
+    var t = e.target.closest("[data-toggle]");
+    if (t) { var g = t.dataset.toggle; if (state.collapsed[g]) delete state.collapsed[g]; else state.collapsed[g] = 1; lsSet("rak:collapsed", state.collapsed); render(); return; }
+    var btn = e.target.closest("[data-act]"); if (!btn || !store) return;
+    var id = btn.closest(".card").dataset.id, it = state.items.find(function (x) { return x.id === id; }); if (!it) return;
+    var act = btn.dataset.act;
+    if (act === "fav") store.put(Object.assign({}, it, { fav: !it.fav }));
+    else if (act === "edit") openForm(it);
+    else if (act === "del") {
+      if (state.confirmId === id) { clearTimeout(confirmTimer); state.confirmId = null; store.del(id).then(function () { toast("Bookmark deleted"); }); }
+      else { state.confirmId = id; render(); clearTimeout(confirmTimer); confirmTimer = setTimeout(function () { state.confirmId = null; render(); }, 3000); }
+    }
+  });
+
+  init();
+})();
+</script>
